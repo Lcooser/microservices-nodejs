@@ -1,41 +1,40 @@
-import { fastify } from 'fastify'
-import { } from '@fastify/cors'
-import { z } from 'zod'
+import { fastify, FastifyRequest } from 'fastify';
+import { } from '@fastify/cors';
+import { z } from 'zod';
 import {
     serializerCompiler,
     validatorCompiler,
     type ZodTypeProvider,
-} from 'fastify-type-provider-zod'
+} from 'fastify-type-provider-zod';
 
+const app = fastify().withTypeProvider<ZodTypeProvider>();
 
-const app = fastify().withTypeProvider<ZodTypeProvider>()
-
-app.setSerializerCompiler(serializerCompiler)
-app.setValidatorCompiler(validatorCompiler)
-
+app.setSerializerCompiler(serializerCompiler);
+app.setValidatorCompiler(validatorCompiler);
 
 app.get('/health', () => {
-    return 'OK'
-})
+    return 'OK';
+});
 
+const createOrderBodySchema = z.object({
+    amount: z.number(),
+});
 
+type CreateOrderBody = z.infer<typeof createOrderBodySchema>;
 
 app.post('/orders', {
     schema: {
-        body: z.object({
-            amount: z.number(),
-        })
+        body: createOrderBodySchema
     }
+}, (request: FastifyRequest<{ Body: CreateOrderBody }>, reply) => {
 
-}, (request, reply) => {
+    const { amount } = request.body;
 
-    const { amount } = request.body
+    console.log('Creating an order with amount', amount);
 
-    console.log('Creating an order with amoutn', amount)
-
-    return reply.status(201).send()
-})
+    return reply.status(201).send();
+});
 
 app.listen({ host: '0.0.0.0', port: 3333 }).then(() => {
-    console.log('[Orders] HTTP Server running!')
-})
+    console.log('[Orders] HTTP Server running!');
+});

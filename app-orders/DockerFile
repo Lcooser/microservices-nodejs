@@ -2,38 +2,38 @@ FROM node:lts-alpine AS base
 RUN npm i -g corepack@latest
 RUN corepack enable pnpm
 
-# ----
-
-
-FROM base AS deps 
-
+# ---- Instala dependências só de produção ----
+FROM base AS deps
 WORKDIR /app
-
 COPY package*.json ./
-
 RUN npm install --omit=dev
 
-# -----
+# ---- Fase de build (compilar TypeScript) ----
+FROM base AS builder
+WORKDIR /app
+COPY . .
+RUN npm install
+RUN npm run build
 
-
+# ---- Runner final, só com código compilado + deps de prod ----
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 api 
-
+RUN adduser --system --uid 1001 api
 RUN chown api:nodejs .
 
+# Copia apenas o código já buildado + node_modules de produção
 COPY --chown=api:nodejs . .
+COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 
 USER api
 
 EXPOSE 3333
-
 ENV PORT=3333
 ENV HOSTNAME="0.0.0.0"
 
-ENTRYPOINT [ "npm", "run", "start" ]
+ENTRYPOINT ["node", "dist/http/server.js"]
